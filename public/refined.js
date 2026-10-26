@@ -48,7 +48,7 @@ async function refreshConnection() {
     liveStatus = await response.json();
     $('#connectionLine').textContent = liveStatus.dart ? (liveStatus.execution === 'local' ? `DART${liveStatus.krxConfigured?' · KRX':''} PC 연결 준비 · 종목 버튼으로 실제 조회` : '클라우드 연결 확인 필요 · PC 실행 버전 사용 가능') : 'DART 서버 설정 필요';
     $('#dartLed').classList.toggle('ready', Boolean(liveStatus.dart));
-    $('.demo-badge').textContent = liveStatus.dart ? 'DART READY · DEMO CARDS' : 'DEMO · SETUP REQUIRED';
+    $('.demo-badge').textContent = liveStatus.dart ? 'DART · KRX SCREENER' : 'DEMO · SETUP REQUIRED';
   } catch {
     $('#connectionLine').textContent = '서버에 연결하지 못했습니다 · 다시 시도해 주세요';
     $('.demo-badge').textContent = 'CONNECTION CHECK';
@@ -99,9 +99,9 @@ async function startActualResearch(query, days) {
   if (researchAbort || state.analysis) return;
   originalClose();
   const abort = new AbortController(); researchAbort = abort; state.analysis = true;
-  const timeout = setTimeout(() => abort.abort('timeout'), 180000);
-  steps.splice(0, steps.length, ['종목과 조회 범위 확인','DART · 공식 기업 목록'], ['공시 목록 수집','DART · 페이지별 실제 조회'], ['근거 자료 정리','접수번호 · 원문 · 제목 유형'], ['자료 범위 확인','시세·뉴스 누락 상태 표시']);
-  $('#analysisTitle').textContent = query ? '기업의 변화를 읽고 있습니다.' : '오늘의 공시를 한곳에 모읍니다.';
+  const timeout = setTimeout(() => abort.abort('timeout'), 480000);
+  steps.splice(0, steps.length, ['종목과 조회 범위 확인','DART · 공식 기업 목록'], ['공시 목록 수집','DART · 페이지별 실제 조회'], ['근거 자료 정리','접수번호 · 원문 · 제목 유형'], ['후보 선정·시나리오 계산','KRX 유동성 · DART 실적 비교']);
+  $('#analysisTitle').textContent = query ? '기업의 변화를 읽고 있습니다.' : '단타 4개 · 장기 4개 후보를 추립니다.';
   $('#analysisOverlay .analysis-modal').classList.add('actual-job');
   $('#analysisOverlay .analysis-top small').textContent = 'ACTUAL DART REQUEST';
   $('#analysisOverlay .analysis-modal > p').textContent = '실제 서버의 조회 단계입니다. 확인한 자료만 결과에 담습니다.';
@@ -150,7 +150,7 @@ async function startActualResearch(query, days) {
     showView('explore'); renderResearch(actualResult);
     $('#connectionLine').textContent = `DART 조회 확인 · ${kstTime(actualResult.createdAt)} KST · ${actualResult.count.toLocaleString()}건`;
     $('#dartLed').classList.add('ready');
-    $('#researchResult').scrollIntoView({behavior:reduceMotion?'instant':'smooth',block:'start'});
+    (actualResult.company?$('#researchResult'):$('#selectionBoard')).scrollIntoView({behavior:reduceMotion?'instant':'smooth',block:'start'});
     showToast(actualResult.partial ? '부분 수집 결과입니다. 누락 범위를 함께 확인하세요.' : 'DART 조회 완료 · 실제 공시와 원문을 확인하세요.');
   } catch (error) {
     if (researchAbort !== abort) return;
@@ -228,3 +228,38 @@ renderResearch = function(result) {
 // Keep fictional opportunity examples behind an explicit disclosure.
 const demoOpportunities=$('#opportunities');
 if(demoOpportunities){const wrap=document.createElement('details');wrap.className='brief-demo';wrap.innerHTML='<summary>가상 후보 화면 예시 보기</summary>';demoOpportunities.before(wrap);wrap.append(demoOpportunities);}
+// Candidate discovery is the primary journey; company research is drill-down.
+let selectedHorizon='short';
+const renderCompanyBrief=renderResearch;
+const selectionBoard=document.createElement('section');selectionBoard.id='selectionBoard';selectionBoard.className='selection-board';
+$('#movementLab').before(selectionBoard);
+const fmtReturn=n=>`${n>0?'+':''}${n.toFixed(1)}%`;
+function candidateGroup(key,title,items){return `<section><div class="selection-heading"><div class="eyebrow">${key==='short'?'SHORT TERM · 5 TRADING DAYS':'LONG TERM · 12 MONTHS'}</div><h2>${title}<span>${items.length} / 4</span></h2></div><div class="candidate-grid">${Array.from({length:4},(_,i)=>{const c=items[i];return c?`<button class="candidate-card" data-candidate="${esc(c.stockCode)}" data-horizon="${key}"><span class="candidate-rank">0${i+1} · ${esc(c.market)}</span><h3>${esc(c.name)} <span>↗</span></h3><small>${esc(c.stockCode)} · ${Number(c.close).toLocaleString()}원</small><div class="candidate-return"><span>예상 수익성 · 기준 시나리오</span><strong>${c.scenario?fmtReturn(c.scenario.returns.base):'산출 보류'}</strong><small>${c.scenario?`${esc(c.scenario.horizon)} · 보수 ${fmtReturn(c.scenario.returns.bear)} / 낙관 ${fmtReturn(c.scenario.returns.bull)}`:'비교 자료 부족'}</small></div><ul>${c.reasons.map(r=>`<li>${esc(r)}</li>`).join('')}</ul><div class="candidate-open">선정 이유·상세 분석·예상 경로 보기 →</div><small>검증 전 가정 시나리오 · 수익 보장 아님</small></button>`:`<div class="candidate-card candidate-empty"><span>0${i+1}</span><h3>조건 충족 후보 없음</h3><p>자료가 충분한 종목만 채웁니다.</p></div>`;}).join('')}</div></section>`;}
+function renderSelection(selection){
+ $('#movementLab').hidden=true;
+ selectionBoard.innerHTML=`<div class="eyebrow">VERDANT · RESEARCH SELECTION</div><h2 class="selection-title">단타 4개, 장기 4개.<br>근거를 보고 선택하세요.</h2><p>시세 기준 ${receiptDate(selection?.asOf)} · ${selection?.universe||0}개 시세 중 ${selection?.reviewed||0}개 실적 검토</p>${selection?.status==='available'?`${candidateGroup('short','단타 후보',selection.short)}${candidateGroup('long','장기 후보',selection.long)}`:`<div class="brief-gaps">${esc(selection?.message||'아직 조회하지 않았습니다. 위의 후보 찾기를 눌러 주세요.')}</div>`}<details class="brief-raw"><summary>선정 방식과 예상 수익성 계산 기준</summary><p>${esc(selection?.message||'KRX·DART 자료를 조회해 별도 전략으로 선별합니다.')}</p><p>${esc(selection?.limitations||'')}</p><p>예상 수익성은 검증 전 모델의 가정값입니다. 확률·보장 수익률이 아닙니다. 상세 그래프에서 계산식과 하락 시나리오를 함께 확인하세요.</p></details>`;
+ selectionBoard.querySelectorAll('[data-candidate]').forEach(button=>button.addEventListener('click',()=>{selectedHorizon=button.dataset.horizon;startActualResearch(button.dataset.candidate,30);}));
+}
+function scenarioChart(s){
+ if(!s)return '<div class="brief-gaps">예상 경로를 계산할 비교 자료가 충분하지 않습니다.</div>';
+ const all=Object.values(s.paths).flat().map(p=>p.price),min=Math.min(...all)*.98,max=Math.max(...all)*1.02;
+ const y=p=>180-(p-min)/(max-min)*150;
+ return `<section class="projection-panel"><div class="eyebrow">FORWARD SCENARIOS · ${esc(s.horizon)}</div><h3>예상 가격 경로</h3><p>시작 ${Number(s.basePrice).toLocaleString()}원 · ${receiptDate(s.asOf)} 종가 기준</p><svg viewBox="0 0 680 225" role="img" aria-label="보수·기준·낙관 가격 가정 경로"><path d="M45 30H655M45 105H655M45 180H655" stroke="#405137" stroke-dasharray="4 6"/>${Object.entries(s.paths).map(([key,points])=>`<polyline points="${points.map(p=>`${45+p.step*100},${y(p.price).toFixed(1)}`).join(' ')}" fill="none" stroke="${{bear:'#eda49b',base:'#d0f792',bull:'#8bc5eb'}[key]}" stroke-width="3" stroke-dasharray="${key==='base'?'0':'6 5'}"/><text x="650" y="${y(points.at(-1).price)-7}" text-anchor="end" fill="${{bear:'#eda49b',base:'#d0f792',bull:'#8bc5eb'}[key]}" font-size="12">${{bear:'보수',base:'기준',bull:'낙관'}[key]} ${fmtReturn(s.returns[key])}</text>`).join('')}<text x="45" y="216" fill="#abbba3" font-size="12">기준일</text><text x="645" y="216" text-anchor="end" fill="#abbba3" font-size="12">${esc(s.horizon)} 후</text></svg><div class="scenario-metrics">${Object.entries(s.returns).map(([key,v])=>`<div><small>${{bear:'보수',base:'기준',bull:'낙관'}[key]}</small><strong>${fmtReturn(v)}</strong><span>${Math.round(s.basePrice*(1+v/100)).toLocaleString()}원</span></div>`).join('')}</div><details class="brief-raw"><summary>계산 가정과 해석</summary><p>${esc(s.method)}</p><p>${esc(s.limitations)}</p></details></section>`;
+}
+renderResearch=function(result){
+ if(!result.company){renderSelection(result.selection);$('#researchResult').classList.add('hidden');selectionBoard.scrollIntoView({behavior:'smooth',block:'start'});return;}
+ $('#movementLab').hidden=false;renderCompanyBrief(result);
+ const target=$('#researchResult');target.querySelector('.brief-tabs')?.remove();
+ target.querySelectorAll('.brief-perspective').forEach(panel=>{panel.hidden=panel.id!==`brief-${selectedHorizon}`;});
+ const lead=target.querySelector('.brief-lead');if(lead){lead.querySelector('h2').textContent=`${result.company.name} · ${selectedHorizon==='short'?'단타':'장기'} 후보 상세 분석`;lead.querySelector('p').textContent=`선택한 투자 기간의 가격·실적 근거, 위험과 예상 경로를 확인하세요. ${result.brief.overview}`;lead.insertAdjacentHTML('afterend',scenarioChart(result.scenarios?.[selectedHorizon]));}
+ const back=document.createElement('button');back.className='lookup-button';back.textContent='← 단타·장기 후보 목록으로';back.onclick=()=>{ $('#movementLab').hidden=true;selectionBoard.scrollIntoView({behavior:'smooth'});};target.prepend(back);
+};
+$('#heroTitle').innerHTML='다음 기회를 찾는,<br><em>두 가지 투자 시선.</em>';
+$('.hero-copy p').innerHTML='단타 후보 4개와 장기 후보 4개를 추리고,<br>예상 수익성부터 기업별 상세 분석까지.';
+$('#analyzeButton span').textContent='단타·장기 후보 찾기';
+$('.keyboard-hint').innerHTML='<kbd>↵</kbd> 리서치하고 8개 후보 선별';
+$('.footer p').textContent='KRX·DART 기반 조건 선별. 예상 경로는 검증 전 가정 시나리오이며 수익을 보장하지 않습니다.';
+$('.demo-badge').textContent='RESEARCH SCREENER';
+$('.market-strip')?.setAttribute('hidden','');$('.lower-grid')?.setAttribute('hidden','');
+document.querySelectorAll('.brief-demo').forEach(e=>e.hidden=true);
+renderSelection(null);
