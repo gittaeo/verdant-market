@@ -99,3 +99,15 @@ npm run build
 | [CODEX_HANDOFF.md](CODEX_HANDOFF.md) | 원본 목업 인수인계 기록 |
 
 PC 버전과 웹 버전의 브라우저 저장 기록은 자동 동기화되지 않습니다.
+
+## 종합 리서치와 뉴스 연결
+
+핵심 결론 → 단타(1–5거래일) / 장기(6–12개월) → 핵심 공시 → 원문 목록 순서로 제공합니다. 단타는 최대 5개 종가와 거래량, 장기는 DART 전년 동기 실적·현금흐름에 근거한 규칙 기반 관찰입니다. 공시 정리는 제목의 유형과 확인 항목이며 본문 전체 분석이 아닙니다.
+
+뉴스는 https://guide.ncloud-docs.com/docs/apihub-application 에서 NAVER 검색의 뉴스 상품을 신청하고 이용 한도를 설정합니다. Client ID와 Client Secret은 채팅에 보내지 말고 실행 바로가기와 같은 위치의 NEWS API.json에 저장합니다. 서버 재시작 시 읽습니다. 해당 파일은 Git에서 제외합니다.
+
+```json
+{"clientId":"발급한 Client ID","clientSecret":"발급한 Client Secret"}
+```
+
+배포 환경변수: NAVER_NEWS_CLIENT_ID, NAVER_NEWS_CLIENT_SECRET. 제목·검색 요약·원문 링크만 수집하며 기사 본문 검증이나 가격과의 인과 분석은 수행하지 않습니다. 검증: node --test tests/research.test.mjs tests/krx.test.mjs tests/brief.test.mjs (15개 통과).

@@ -10,6 +10,10 @@ const keyPath = resolve(root, '..', 'DART API.txt');
 const key = existsSync(keyPath) ? readFileSync(keyPath, 'utf8').trim() : '';
 const krxPath = ['KRX API.txt','KPX API.txt'].map(name=>resolve(root,'..',name)).find(path=>existsSync(path));
 const krxKey = process.env.KRX_API_KEY || (krxPath ? readFileSync(krxPath,'utf8').trim() : '');
+let newsConfig={};
+try{newsConfig=JSON.parse(readFileSync(resolve(root,'..','NEWS API.json'),'utf8').replace(/^\uFEFF/,''))}catch{}
+const newsClientId=process.env.NAVER_NEWS_CLIENT_ID||newsConfig.clientId;
+const newsClientSecret=process.env.NAVER_NEWS_CLIENT_SECRET||newsConfig.clientSecret;
 const files = new Map([
   ['/', ['web/index.html','text/html; charset=utf-8']],
   ['/refined.js', ['public/refined.js','application/javascript; charset=utf-8']],
@@ -20,7 +24,7 @@ const server = createServer(async (req,res) => {
   if (![`127.0.0.1:${port}`,`localhost:${port}`].includes(req.headers.host)) { res.writeHead(403).end(); return; }
   const url = new URL(req.url, `http://${req.headers.host}`);
   const send = (status,data) => { res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}); res.end(JSON.stringify(data)); };
-  if (req.method === 'GET' && url.pathname === '/api/status') { send(200,{dart:/^[a-zA-Z0-9]{40}$/.test(key),krxConfigured:Boolean(krxKey),prices:false,news:false,intraday:false,execution:'local'});return; }
+  if (req.method === 'GET' && url.pathname === '/api/status') { send(200,{dart:/^[a-zA-Z0-9]{40}$/.test(key),krxConfigured:Boolean(krxKey),newsConfigured:Boolean(newsClientId&&newsClientSecret),prices:false,news:false,intraday:false,execution:'local'});return; }
   if (req.method === 'POST' && url.pathname === '/api/research') {
     const origin = req.headers.origin;
     if ((origin && origin !== url.origin) || !String(req.headers['content-type']).startsWith('application/json')) { send(403,{error:'허용되지 않은 요청입니다.'});return; }
@@ -31,7 +35,7 @@ const server = createServer(async (req,res) => {
     res.writeHead(200,{'Content-Type':'application/x-ndjson; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
     const abort = new AbortController();res.on('close',()=>abort.abort());
     const event=(type,data)=>{if(!res.destroyed)res.write(JSON.stringify({type,data})+'\n')};
-    try { const result=await runResearch({key,krxKey,query:body.query.trim(),days:body.days,signal:abort.signal,onProgress:data=>event('progress',data)});event('result',result); }
+    try { const result=await runResearch({key,krxKey,newsClientId,newsClientSecret,query:body.query.trim(),days:body.days,signal:abort.signal,onProgress:data=>event('progress',data)});event('result',result); }
     catch(error){event('error',{code:error instanceof ResearchError?error.code:'internal',message:error instanceof ResearchError?error.message:'조회를 완료하지 못했습니다. 다시 시도해 주세요.'});}
     res.end();return;
   }
