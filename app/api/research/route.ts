@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       let closed = false;
       const send = (type: string, data: unknown) => { if (!closed) { try { controller.enqueue(encoder.encode(JSON.stringify({ type, data }) + '\n')); } catch { closed = true; } } };
       try {
-        const result = await runResearch({ query, days: body.days, key: (env as any).DART_API_KEY || process.env.DART_API_KEY, krxKey:(env as any).KRX_API_KEY || process.env.KRX_API_KEY, newsClientId:(env as any).NAVER_NEWS_CLIENT_ID||process.env.NAVER_NEWS_CLIENT_ID,newsClientSecret:(env as any).NAVER_NEWS_CLIENT_SECRET||process.env.NAVER_NEWS_CLIENT_SECRET, signal: request.signal, onProgress: (event: unknown) => send('progress', event) });
+        const result = await runResearch({ query, days: body.days, key: (env as any).DART_API_KEY || process.env.DART_API_KEY, krxKey:(env as any).KRX_API_KEY || process.env.KRX_API_KEY, kisAppKey:(env as any).KIS_APP_KEY||process.env.KIS_APP_KEY,kisAppSecret:(env as any).KIS_APP_SECRET||process.env.KIS_APP_SECRET, newsClientId:(env as any).NAVER_NEWS_CLIENT_ID||process.env.NAVER_NEWS_CLIENT_ID,newsClientSecret:(env as any).NAVER_NEWS_CLIENT_SECRET||process.env.NAVER_NEWS_CLIENT_SECRET, signal: request.signal, onProgress: (event: unknown) => send('progress', event) });
         send('result', result);
       } catch (error) {
         send('error', { code: error instanceof ResearchError ? error.code : 'internal', message: error instanceof ResearchError ? error.message : '분석을 완료하지 못했습니다. 다시 시도해 주세요.' });

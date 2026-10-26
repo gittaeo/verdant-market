@@ -263,3 +263,25 @@ $('.demo-badge').textContent='RESEARCH SCREENER';
 $('.market-strip')?.setAttribute('hidden','');$('.lower-grid')?.setAttribute('hidden','');
 document.querySelectorAll('.brief-demo').forEach(e=>e.hidden=true);
 renderSelection(null);
+// Investor flow is evidence, never inferred from price or volume.
+const renderSelectionBeforeFlow=renderSelection;
+renderSelection=function(selection){
+ renderSelectionBeforeFlow(selection);
+ const coverage=selection?.flowCoverage;
+ for(const key of ['short','long']){
+ const info=coverage?.[key],items=selection?.[key]||[];
+ const button=selectionBoard.querySelector(`[data-horizon="${key}"]`);
+ const group=selectionBoard.querySelectorAll('.selection-heading')[key==='short'?0:1]?.parentElement;
+ if(group){const banner=document.createElement('div');banner.className='flow-banner '+(info?.mode==='flow_screened'?'flow-confirmed':'');banner.innerHTML=info?.mode==='flow_screened'?`<strong>수급 필터 적용</strong><span>${info.checked}/${info.total}개 자료 확인 · ${key==='short'?'5':'20'}거래일 외인·기관 누적 순매수 + 동반 순매수 40% 이상</span>`:'<strong>수급 미확인 · 예비 후보</strong><span>외국인·기관 데이터 연결 전입니다. 현재 순위에는 수급이 반영되지 않았습니다.</span>';group.querySelector('.selection-heading').after(banner);}
+ for(const item of items){const card=selectionBoard.querySelector(`[data-candidate="${item.stockCode}"][data-horizon="${key}"]`);if(!card)continue;const status=document.createElement('div');status.className='flow-card-status '+(item.flowEvidence?.qualified?'flow-confirmed':'');status.innerHTML=`<strong>${esc(item.flowEvidence?.label||'수급 미확인')}</strong>${(item.flowEvidence?.reasons||[]).map(r=>`<small>${esc(r)}</small>`).join('')}`;card.querySelector('.candidate-return').before(status);}
+ }
+ if(selection){const setup=document.createElement('details');setup.className='brief-raw';setup.innerHTML='<summary>외국인·기관 수급 연결 및 선정 기준</summary><p>한국투자증권 Open API의 주식현재가 투자자 자료를 사용합니다. 프로젝트 폴더 KIS API.json에 appKey, appSecret을 저장한 뒤 서버를 재시작하면 읽습니다. 계좌번호·비밀번호는 필요하지 않습니다.</p><p>단타는 5개, 장기는 20개 거래일 누적 외국인·기관 순매수가 모두 양수이며, 두 주체가 함께 순매수한 날이 40% 이상이어야 통과합니다. 통과 후보는 동반 순매수 비율·거래량 대비 순매수 강도를 가점으로 비교합니다.</p><p>최신 종가와 수급 기준일이 다르거나 기간이 부족하면 미확인입니다. 해당 전략에서 수급을 확인한 종목이 있으면 미확인 종목으로 빈자리를 채우지 않습니다. 전부 미확인인 경우 기존 순위는 예비 후보로 표시합니다. 예상 수익률에는 수급 가점을 더하지 않습니다.</p>';selectionBoard.append(setup);}
+};
+function investorFlowHTML(flow){
+ const f=n=>n==null?'자료 없음':`${n>0?'+':''}${Math.round(n).toLocaleString()}주`;
+ if(flow?.status!=='available')return `<section class="flow-detail"><div class="eyebrow">INVESTOR FLOW</div><h3>외국인·기관 수급 미확인</h3><p>${esc(flow?.message||'수급 기준일 불일치 또는 자료 미연결')}</p><p>가격·거래량으로 매수 주체를 추정하지 않습니다.</p></section>`;
+ return `<section class="flow-detail"><div class="eyebrow">INVESTOR FLOW · ${receiptDate(flow.asOf)}</div><h3>누가 사들이고 있나요?</h3><div class="flow-windows">${['short','long'].map(key=>{const w=flow[key];return `<article><h4>${key==='short'?'최근 5거래일':'최근 20거래일'}</h4>${w.status==='available'?`<p>외국인 <strong>${f(w.foreign)}</strong><br>기관 <strong>${f(w.institution)}</strong></p><p>동반 순매수 ${w.bothDays}/${w.observations}일${w.intensity!=null?` · 거래량 대비 ${w.intensity.toFixed(2)}%`:''}</p><strong>${w.qualified?'수급 조건 충족':'수급 조건 미충족'}</strong>`:`<p>기간 자료 부족 · ${w.observations}/${w.required}개</p>`}</article>`;}).join('')}</div><p>연속 순매수: 외국인 ${flow.foreignStreak}일 · 기관 ${flow.institutionStreak}일</p><details class="brief-raw"><summary>일별 순매수 원자료 · 수량 기준</summary><div class="flow-table-wrap"><table><thead><tr><th>일자</th><th>외국인</th><th>기관</th></tr></thead><tbody>${flow.rows.map(r=>`<tr><td>${receiptDate(r.date)}</td><td>${f(r.foreign)}</td><td>${f(r.institution)}</td></tr>`).join('')}</tbody></table></div></details><small>${esc(flow.source)} · ${esc(flow.limitations)}</small></section>`;
+}
+const renderResearchBeforeFlow=renderResearch;
+renderResearch=function(result){renderResearchBeforeFlow(result);if(result.company){const target=$('#researchResult');const graph=target.querySelector('.projection-panel');if(graph)graph.insertAdjacentHTML('beforebegin',investorFlowHTML(result.investorFlow));else target.insertAdjacentHTML('beforeend',investorFlowHTML(result.investorFlow));}};
+renderSelection(null);
