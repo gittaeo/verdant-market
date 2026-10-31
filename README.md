@@ -147,3 +147,9 @@ Ran Impeccable detect and Hallmark sloplint against the page and stylesheet. Rem
 The updated UI adds a WebGL liquid-metal V brand mark, two strategy columns with actual historical sparklines, clearer candidate hierarchy, a company search shortcut, and a legible light scenario chart. See [DESIGN.md](DESIGN.md) for design tokens, source-guideline choices and data semantics. Investor API credentials and research scoring are unchanged.
 
 Current WebGL visual implementation and verified screenshots: [liquid visual notes](docs/liquid-visual.md).
+
+### News status correction
+
+NAVER credentials are configured separately for local and hosted runtimes. The hosted Site now has NAVER_NEWS_CLIENT_ID and NAVER_NEWS_CLIENT_SECRET stored as secrets. `/api/status` probes NAVER independently of DART and returns newsConfigured plus a sanitized newsHealth status. Healthy probes are cached for five minutes, failures for 30 seconds; concurrent refreshes share the same request. No credential values are included in responses.
+
+The sources modal and company coverage now use actual news status instead of a hardcoded disconnected label. A market-wide lookup with no company is `company_required` when credentials are present, not `not_connected`. Tests: 32 pass, including cache, concurrency, zero valid results, missing keys and authentication errors.

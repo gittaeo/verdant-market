@@ -1,3 +1,4 @@
+import {checkNewsConnection} from '../lib/news-health.mjs';
 import { createServer } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -32,7 +33,7 @@ const server = createServer(async (req,res) => {
   if (![`127.0.0.1:${port}`,`localhost:${port}`].includes(req.headers.host)) { res.writeHead(403).end(); return; }
   const url = new URL(req.url, `http://${req.headers.host}`);
   const send = (status,data) => { res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}); res.end(JSON.stringify(data)); };
-  if (req.method === 'GET' && url.pathname === '/api/status') { send(200,{dart:/^[a-zA-Z0-9]{40}$/.test(key),krxConfigured:Boolean(krxKey),newsConfigured:Boolean(newsClientId&&newsClientSecret),investorConfigured:Boolean(kisAppKey&&kisAppSecret),prices:false,news:false,intraday:false,execution:'local'});return; }
+  if (req.method === 'GET' && url.pathname === '/api/status') { const newsHealth=await checkNewsConnection({clientId:newsClientId,clientSecret:newsClientSecret});send(200,{dart:/^[a-zA-Z0-9]{40}$/.test(key),krxConfigured:Boolean(krxKey),newsConfigured:Boolean(newsClientId&&newsClientSecret),investorConfigured:Boolean(kisAppKey&&kisAppSecret),prices:false,news:newsHealth.status==='available',newsHealth,intraday:false,execution:'local'});return; }
   if (req.method === 'POST' && url.pathname === '/api/research') {
     const origin = req.headers.origin;
     if ((origin && origin !== url.origin) || !String(req.headers['content-type']).startsWith('application/json')) { send(403,{error:'허용되지 않은 요청입니다.'});return; }

@@ -11,6 +11,11 @@ let snapshots = readStore('verdant-actual-snapshots-v1', []);
 if (!Array.isArray(snapshots)) snapshots = [];
 snapshots = snapshots.filter(r => r && r.dataMode === 'actual' && typeof r.id === 'string' && Array.isArray(r.events)).slice(0,5);
 
+function newsLabel(news,configured=false) {
+ if(news?.status==='available')return Array.isArray(news.items)?`기사 ${news.items.length}건`:'연결 확인';
+ return ({company_required:'기업 선택 후 조회',unauthorized:'인증·한도 확인',unavailable:'조회 실패',not_connected:'키 미설정'})[news?.status]||(configured?'조회 전':'키 미설정');
+}
+
 // Preserve the supplied brand, with a clearer primary action and data labels.
 $('#heroTitle').innerHTML = '시장의 소음 너머,<br><span>움직임의 이유까지.</span>';
 $('.hero-copy p').innerHTML = '새로운 기회를 찾고, 내 종목의 변화를 이해하다.<br>공시부터 차근차근, 확인할 수 있는 근거로.';
@@ -47,6 +52,7 @@ async function refreshConnection() {
     if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) throw Error();
     liveStatus = await response.json();
     $('#connectionLine').textContent = liveStatus.dart ? (liveStatus.execution === 'local' ? `DART${liveStatus.krxConfigured?' · KRX':''} PC 연결 준비 · 종목 버튼으로 실제 조회` : '클라우드 연결 확인 필요 · PC 실행 버전 사용 가능') : 'DART 서버 설정 필요';
+    $('#connectionLine').textContent += ` / 뉴스 ${newsLabel(liveStatus.newsHealth,liveStatus.newsConfigured)}`;
     $('#dartLed').classList.toggle('ready', Boolean(liveStatus.dart));
     $('.demo-badge').textContent = liveStatus.dart ? '리서치 준비' : 'DEMO · SETUP REQUIRED';
   } catch {
@@ -55,7 +61,6 @@ async function refreshConnection() {
   }
 }
 
-actions.sources = () => modal(`<h2 id="modalTitle">근거의 시작을,<br>투명하게.</h2><p>데이터의 연결 상태와 실제 조회 범위를 따로 표시합니다.</p><a class="modal-link" href="https://opendart.fss.or.kr/intro/main.do" target="_blank" rel="noopener noreferrer"><div>DART · 기업 공시<small>서버에서 공식 API 호출 · 기업 매핑 · 원문 링크</small></div><span class="connection-status">${liveStatus?.dart?'서버 설정 완료':'설정 확인 필요'}</span></a><div class="modal-link"><div>KRX · 가격 · 거래량<small>인증키 승인 및 데이터별 사용 승인 확인 후 연결</small></div><span class="connection-status">승인 대기</span></div><div class="modal-link"><div>NEWS · 사건의 맥락<small>허용된 뉴스 공급원 선정 후 연결</small></div><span class="connection-status">미연결</span></div><div class="demo-note">일별 가격과 장중 실시간 시세는 별도입니다. 현재 시장 지표·후보 카드는 가상 데모이며, 공시 제목만으로 실제 가격 변동의 원인을 확정하지 않습니다.</div>`);
 
 function updateCompany(name, code = '') {
   $('#movementCompany').textContent = name;
@@ -69,7 +74,7 @@ function updateCompany(name, code = '') {
   $('#conclusionBadge').textContent = '자료 확인 전';
   $('#chartContext').textContent = '가격·업종 비교 연결 예정';
   $('#movementNote').textContent = '실제 주가의 상승·하락은 가격 자료 연결 후 확인합니다. 공시에서 기업의 변화를 먼저 살펴보세요.';
-  $('#movementCoverage').innerHTML = `<span class="coverage-pill">DART <b>조회 전</b></span><span class="coverage-pill">KRX <b>${liveStatus?.krxConfigured?'조회 전':'키 미설정'}</b></span><span class="coverage-pill">NEWS <b>미연결</b></span>`;
+  $('#movementCoverage').innerHTML = `<span class="coverage-pill">DART <b>조회 전</b></span><span class="coverage-pill">KRX <b>${liveStatus?.krxConfigured?'조회 전':'키 미설정'}</b></span><span class="coverage-pill">NEWS <b>${newsLabel(null,liveStatus?.newsConfigured)}</b></span>`;
 }
 
 $$('[data-stock]').forEach(button => button.addEventListener('click', () => {
@@ -166,7 +171,7 @@ async function startActualResearch(query, days) {
 function renderPriceContext(result) {
   const context=result.priceContext, quote=context?.latest;
   const labels={unauthorized:'이용 권한 확인',network:'연결 실패',empty:'조회 자료 없음',not_connected:'미연결',partial:'부분 수집'};
-  $('#movementCoverage').innerHTML=`<span class="coverage-pill available">DART <b>${result.count}건</b></span><span class="coverage-pill ${quote?'available':''}">KRX <b>${quote?receiptDate(quote.date):esc(labels[context?.status]||'미연결')}</b></span><span class="coverage-pill">NEWS <b>미연결</b></span>`;
+  $('#movementCoverage').innerHTML=`<span class="coverage-pill available">DART <b>${result.count}건</b></span><span class="coverage-pill ${quote?'available':''}">KRX <b>${quote?receiptDate(quote.date):esc(labels[context?.status]||'미연결')}</b></span><span class="coverage-pill ${result.news?.status==='available'?'available':''}">NEWS <b>${newsLabel(result.news,liveStatus?.newsConfigured)}</b></span>`;
   if(!quote){$('#movementNote').textContent=context?.message||'가격 자료가 연결되지 않았습니다.';return;}
   const format=value=>value==null?'자료 없음':Number(value).toLocaleString('ko-KR');
   const percent=quote.changePercent==null?'등락률 자료 없음':`${quote.changePercent>0?'+':''}${quote.changePercent.toFixed(2)}%`;
@@ -180,7 +185,7 @@ function renderPriceContext(result) {
   $('#movementNote').textContent=`거래량 ${format(quote.volume)}주 · 거래대금 ${format(quote.turnover)}원. ${context.message} 기업행동을 조정한 수익률 차트가 아닙니다.`;
   $('#movementConclusion').textContent=`${receiptDate(quote.date)} 종가의 전일 대비 등락률은 ${percent}입니다. 변동 원인은 추가 자료가 필요합니다.`;
   $('#conclusionBadge').textContent= context.status==='partial'?'KRX 부분 수집':'공시·종가 확인';
-  $('#causeRows').innerHTML=`<div class="cause-row"><span class="cause-number">01</span><div><h4>가격·거래량 · 확인된 사실</h4><p>KRX 기준 종가 ${format(quote.close)}원, 전일 대비 ${esc(percent)}, 거래량 ${format(quote.volume)}주입니다.</p></div><span class="cause-state">KRX</span></div><div class="cause-row"><span class="cause-number">02</span><div><h4>기업 공시 · 별도 확인</h4><p>${result.count?esc(result.events[0]?.title):'선택한 기간에 접수된 공시가 없습니다.'}</p></div><span class="cause-state">DART</span></div><div class="cause-row"><span class="cause-number">03</span><div><h4>뉴스·업종 비교 · 추가 자료 필요</h4><p>가격 변동과 공시의 동시 발생만으로 원인을 확정할 수 없습니다.</p></div><span class="cause-state">미연결</span></div>`;
+  $('#causeRows').innerHTML=`<div class="cause-row"><span class="cause-number">01</span><div><h4>가격·거래량 · 확인된 사실</h4><p>KRX 기준 종가 ${format(quote.close)}원, 전일 대비 ${esc(percent)}, 거래량 ${format(quote.volume)}주입니다.</p></div><span class="cause-state">KRX</span></div><div class="cause-row"><span class="cause-number">02</span><div><h4>기업 공시 · 별도 확인</h4><p>${result.count?esc(result.events[0]?.title):'선택한 기간에 접수된 공시가 없습니다.'}</p></div><span class="cause-state">DART</span></div><div class="cause-row"><span class="cause-number">03</span><div><h4>관련 뉴스 · ${newsLabel(result.news,liveStatus?.newsConfigured)}</h4><p>${result.news?.status==='available'?'관련 기사와 검색 요약을 아래에서 확인할 수 있습니다. 기사와 가격의 동시 발생만으로 원인을 확정하지 않습니다.':'뉴스의 연결·조회 상태를 확인해 주세요. 업종 비교 자료는 별도로 필요합니다.'}</p></div><span class="cause-state">NEWS</span></div>`;
 }
 var renderResearch;
 
@@ -211,7 +216,7 @@ document.addEventListener('pointermove',event=>{
   const card = event.target.closest('.stock-card'); if (!card) return;
   const rect = card.getBoundingClientRect(); card.style.setProperty('--mx',`${event.clientX-rect.left}px`); card.style.setProperty('--my',`${event.clientY-rect.top}px`);
 });
-actions.sources = () => modal(`<h2 id="modalTitle">데이터의 기준부터,<br>투명하게.</h2><p>키 설정과 실제 조회 결과를 구분합니다.</p><div class="modal-link"><div>DART · 기업 공시<small>공식 공시 목록·기업 매핑·원문 링크</small></div><span>${liveStatus?.dart?'키 설정 완료':'설정 필요'}</span></div><a class="modal-link" href="https://openapi.krx.co.kr/contents/OPP/USES/service/OPPUSES002_S1.cmd" target="_blank" rel="noopener noreferrer"><div>KRX · 종가·거래량<small>코스피·코스닥 일별매매정보 · 최근 최대 5거래일</small></div><span>${liveStatus?.krxConfigured?'키 설정 완료':'설정 필요'}</span></a><div class="modal-link"><div>NEWS · 이슈 맥락<small>공급원 연결 예정</small></div><span>미연결</span></div><p class="data-note">KRX 데이터는 실시간 현재가가 아닌 기준일의 비수정 종가입니다. 실제 가격은 종목 리서치에서 조회하며, 상단 시장 지표와 후보 카드는 가상 데모입니다.</p>`);
+actions.sources = () => modal(`<h2 id="modalTitle">데이터의 기준부터,<br>투명하게.</h2><p>키 설정과 실제 조회 결과를 구분합니다.</p><div class="modal-link"><div>DART · 기업 공시<small>공식 공시 목록·기업 매핑·원문 링크</small></div><span>${liveStatus?.dart?'키 설정 완료':'설정 필요'}</span></div><a class="modal-link" href="https://openapi.krx.co.kr/contents/OPP/USES/service/OPPUSES002_S1.cmd" target="_blank" rel="noopener noreferrer"><div>KRX · 종가·거래량<small>코스피·코스닥 일별매매정보 · 최근 최대 5거래일</small></div><span>${liveStatus?.krxConfigured?'키 설정 완료':'설정 필요'}</span></a><div class="modal-link"><div>NEWS · 이슈 맥락<small>NAVER API HUB · 제목·검색 요약·원문 링크</small></div><span>${newsLabel(liveStatus?.newsHealth,liveStatus?.newsConfigured)}</span></div><p class="data-note">KRX 데이터는 실시간 현재가가 아닌 기준일의 비수정 종가입니다. 가격·뉴스는 기업 상세에서 실제 조회합니다. 연결 확인은 서버 인증 검사 결과이며, 기사 수는 조회한 기업에 따라 달라집니다.</p>`);
 refreshConnection();
 // A report starts with an evidence-led conclusion; source lists are secondary.
 renderResearch = function(result) {
