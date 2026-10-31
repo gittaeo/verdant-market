@@ -137,3 +137,7 @@ PC 버전과 웹 버전의 브라우저 저장 기록은 자동 동기화되지 
 공식 근거: https://github.com/koreainvestment/open-trading-api/tree/main/examples_llm/domestic_stock/inquire_investor 및 https://openapi.krx.co.kr/contents/OPP/INFO/service/OPPINFO004.cmd
 
 검증: 자동 테스트 27개 통과. 실제 한국투자증권 인증·조회는 앱키 미제공으로 미검증입니다.
+
+### Design audit (2026-10-31)
+
+Ran Impeccable detect and Hallmark sloplint against the page and stylesheet. Removed repeated heading kickers in static/dynamic screens, enlarged small text, improved contrast and removed decorative glow. Reports, exact tool revisions and remaining findings: [design audit](docs/design-audit/README.md). Research behavior is unchanged.
