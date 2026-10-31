@@ -47,3 +47,5 @@ data/
 
 # OS metadata
 .DS_Store
+# Superseded local visual draft (not used by the page)
+/public/art/verdant-observation.svg

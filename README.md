@@ -141,3 +141,9 @@ PC 버전과 웹 버전의 브라우저 저장 기록은 자동 동기화되지 
 ### Design audit (2026-10-31)
 
 Ran Impeccable detect and Hallmark sloplint against the page and stylesheet. Removed repeated heading kickers in static/dynamic screens, enlarged small text, improved contrast and removed decorative glow. Reports, exact tool revisions and remaining findings: [design audit](docs/design-audit/README.md). Research behavior is unchanged.
+
+### Research desk visual refinement
+
+The updated UI adds a WebGL liquid-metal V brand mark, two strategy columns with actual historical sparklines, clearer candidate hierarchy, a company search shortcut, and a legible light scenario chart. See [DESIGN.md](DESIGN.md) for design tokens, source-guideline choices and data semantics. Investor API credentials and research scoring are unchanged.
+
+Current WebGL visual implementation and verified screenshots: [liquid visual notes](docs/liquid-visual.md).

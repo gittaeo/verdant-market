@@ -22,6 +22,10 @@ const files = new Map([
   ['/', ['web/index.html','text/html; charset=utf-8']],
   ['/refined.js', ['public/refined.js','application/javascript; charset=utf-8']],
   ['/refined.css', ['public/refined.css','text/css; charset=utf-8']],
+  ['/desk.css', ['public/desk.css','text/css; charset=utf-8']],
+  ['/liquid-hero.js', ['public/liquid-hero.js','application/javascript; charset=utf-8']],
+  ['/desk.js', ['public/desk.js','application/javascript; charset=utf-8']],
+  ['/art/verdant-observation.svg', ['public/art/verdant-observation.svg','image/svg+xml']],
   ['/favicon.svg', ['public/favicon.svg','image/svg+xml']],
 ]);
 const server = createServer(async (req,res) => {

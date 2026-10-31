@@ -48,7 +48,7 @@ async function refreshConnection() {
     liveStatus = await response.json();
     $('#connectionLine').textContent = liveStatus.dart ? (liveStatus.execution === 'local' ? `DART${liveStatus.krxConfigured?' · KRX':''} PC 연결 준비 · 종목 버튼으로 실제 조회` : '클라우드 연결 확인 필요 · PC 실행 버전 사용 가능') : 'DART 서버 설정 필요';
     $('#dartLed').classList.toggle('ready', Boolean(liveStatus.dart));
-    $('.demo-badge').textContent = liveStatus.dart ? 'DART · KRX SCREENER' : 'DEMO · SETUP REQUIRED';
+    $('.demo-badge').textContent = liveStatus.dart ? '리서치 준비' : 'DEMO · SETUP REQUIRED';
   } catch {
     $('#connectionLine').textContent = '서버에 연결하지 못했습니다 · 다시 시도해 주세요';
     $('.demo-badge').textContent = 'CONNECTION CHECK';
@@ -259,7 +259,7 @@ $('.hero-copy p').innerHTML='단타 후보 4개와 장기 후보 4개를 추리�
 $('#analyzeButton span').textContent='단타·장기 후보 찾기';
 $('.keyboard-hint').innerHTML='<kbd>↵</kbd> 리서치하고 8개 후보 선별';
 $('.footer p').textContent='KRX·DART 기반 조건 선별. 예상 경로는 검증 전 가정 시나리오이며 수익을 보장하지 않습니다.';
-$('.demo-badge').textContent='RESEARCH SCREENER';
+$('.demo-badge').textContent='리서치 데스크';
 $('.market-strip')?.setAttribute('hidden','');$('.lower-grid')?.setAttribute('hidden','');
 document.querySelectorAll('.brief-demo').forEach(e=>e.hidden=true);
 renderSelection(null);
