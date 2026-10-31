@@ -1,0 +1,12 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {selectNewsEvidence} from '../lib/news-evidence.mjs';
+const now=new Date('2026-10-31T10:00:00Z'),company={name:'삼성전자'};
+const item=(title,i=1)=>({title,snippet:'검색 요약은 제목 분류를 대체하지 않습니다.',url:'https://example.com/'+i,publishedAt:'2026-10-31T01:00:00Z'});
+const run=items=>selectNewsEvidence({company,news:{status:'available',items},asOf:'20261030',now});
+test('Keep supportive and contrary articles regardless of chosen scenario',()=>{const e=run([item('삼성전자 영업이익 급증',1),item('삼성전자 수요 둔화와 주가 급락',2),item('삼성전자 경영전략 논의',3)]);assert.equal(e.support.length,1);assert.equal(e.risk.length,1);assert.equal(e.watch.length,1);assert.equal(e.risk[0].timing,'기준 종가 이후 기사');assert.ok(e.support[0].check);assert.equal(e.support[0].sourceHost,'example.com');});
+test('Indirect company mentions, entertainment and malformed/future URLs excluded',()=>{const e=run([{...item('김구라 삼성전자 주식 수익'),snippet:'영업이익 급증'}, {...item('타사 실적 발표',2),snippet:'삼성전자 사상 최대 실적'}, {...item('삼성전자 실적 호조',3),url:'javascript:alert(1)'},{...item('삼성전자 실적 호조',4),publishedAt:'2027-01-01T00:00:00Z'}]);assert.equal(e.excluded,4);assert.equal(e.support.length,0);});
+test('Mixed and negated claims are not asserted as bullish; snippets cannot reverse title subject',()=>{const e=run([item('삼성전자 흑자 전환 실패',1),{...item('삼성전자 조직 개편',2),snippet:'경쟁사의 사상 최대 실적과 주가 폭락'}]);assert.equal(e.support.length,0);assert.equal(e.watch.length,2);});
+test('Similar syndicated titles collapse and missing feed is not interpreted as neutral evidence',()=>{const e=run([item('삼성전자 영업이익 급증',1),item('삼성전자 영업이익 급증!',2)]);assert.equal(e.duplicates,1);assert.equal(e.support.length,1);assert.equal(selectNewsEvidence({company,news:{status:'unauthorized'},now}).status,'unauthorized');});
+
+import {loadCompanyNews} from '../lib/news-search.mjs';
+test('Company research merges focused searches, deduplicates links and retains partial results',async()=>{const calls=[];const news=await loadCompanyNews({query:'삼성전자',clientId:'id',clientSecret:'secret',now,fetcher:async url=>{const q=new URL(url).searchParams.get('query');calls.push(q);if(q.endsWith('주가'))return new Response('',{status:503});return Response.json({items:[{title:'삼성전자 실적 호조',description:'검토',originallink:'https://example.com/same',pubDate:now.toUTCString()}]});}});assert.equal(calls.length,3);assert.equal(news.items.length,1);assert.equal(news.status,'available');assert.equal(news.partial,true);});

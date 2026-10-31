@@ -153,3 +153,7 @@ Current WebGL visual implementation and verified screenshots: [liquid visual not
 NAVER credentials are configured separately for local and hosted runtimes. The hosted Site now has NAVER_NEWS_CLIENT_ID and NAVER_NEWS_CLIENT_SECRET stored as secrets. `/api/status` probes NAVER independently of DART and returns newsConfigured plus a sanitized newsHealth status. Healthy probes are cached for five minutes, failures for 30 seconds; concurrent refreshes share the same request. No credential values are included in responses.
 
 The sources modal and company coverage now use actual news status instead of a hardcoded disconnected label. A market-wide lookup with no company is `company_required` when credentials are present, not `not_connected`. Tests: 32 pass, including cache, concurrency, zero valid results, missing keys and authentication errors.
+
+### 조건 시뮬레이션과 뉴스 근거
+
+실제 가격 그래프 아래에서 반등·횡보·조정 가정 및 종점 등락 슬라이더로 미래 5거래일 경로를 확인합니다. 경로는 사용자 조건의 보간이며 검증된 예측이 아닙니다. 뉴스는 기업명·실적·주가별 검색을 병행해 기업 관련성·유사 제목·날짜를 확인하고, 상승 검토/하락 위험/판단 보류로 선별합니다. 각 기사에 분류 이유·추가 확인 조건·출처·원문·기준 종가와의 날짜 관계를 표시하며 반대 근거도 함께 제공합니다. 뉴스는 현재 경로 가격의 계산 입력이 아닙니다. 검증과 한계는 [가격 분석 문서](docs/price-evidence.md)에 기록합니다.

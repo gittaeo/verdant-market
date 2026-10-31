@@ -14,3 +14,9 @@ test('Different observed prices produce different charts; no legacy forecast val
  const a=render(rows),b=render(rows.map((r,i)=>({...r,close:[100,101,102][i],high:105,low:95})));
  assert.notEqual(a,b);assert.ok(a.includes('실제 고가·저가'));assert.ok(a.includes('예측 수익률 산출 보류'));assert.ok(!a.includes('보수'));assert.ok(!a.includes('낙관'));assert.ok(a.includes('-25.0%'));assert.ok(render([]).includes('부족'));
 });
+
+const forecastSource=readFileSync(new URL('../public/refined.js',import.meta.url),'utf8');
+const pathCode=forecastSource.slice(forecastSource.indexOf('function conditionalPath'),forecastSource.indexOf('function futurePlot'));
+const conditional=runInNewContext(pathCode+';conditionalPath');
+test('Conditional future begins at the observed close and ends at the user assumption',()=>{for(const target of [-30,0,15,30]){const p=conditional(rows,target);assert.equal(p[0].price,90);assert.ok(Math.abs(p.at(-1).price-90*(1+target/100))<1e-9);assert.equal(p.length,6);assert.ok(p.every(x=>Number.isFinite(x.price)&&x.price>0));}});
+test('Recent direction affects intermediate shape, never changes selected endpoint',()=>{const down=conditional(rows,10),up=conditional([{close:80},{close:90}],10);assert.ok(down[1].price<90);assert.ok(up[1].price>90);assert.equal(down.at(-1).price,up.at(-1).price);assert.equal(conditional(rows,31),null);assert.equal(conditional([],5),null);assert.equal(conditional(rows,NaN),null);});
